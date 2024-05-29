@@ -1,6 +1,8 @@
-"""Functions for the RSA algorithm."""
+"""Test functions for the RSA algorithm."""
 
 import random
+import sympy
+
 
 def generate_prime_candidate(length: int) -> int:
     """
@@ -29,9 +31,31 @@ def generate_prime_candidate(length: int) -> int:
     return p
 
 
+def generate_prime_number(length: int) -> int:
+    """
+    Generate a prime number.
+
+    Args:
+        - `length: int`: The number of bits the prime should have.
+
+    Returns:
+        - `int`: The prime number.
+
+    Example:
+    >>> length = 8
+    >>> prime = generate_prime_number(length)
+    >>> print(bin(prime))
+    '0b11000101' # 197, example output, actual output will vary
+    """
+    while True:
+        p = generate_prime_candidate(length)
+        if sympy.isprime(p):
+            return p
+
+
 def main():
     """Run the test functions."""
-    print(generate_prime_candidate(8))
+    print(generate_prime_number(13))
 
 
 if __name__ == "__main__":
