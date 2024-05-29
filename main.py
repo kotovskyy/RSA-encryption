@@ -23,7 +23,7 @@ def generate_prime_candidate(length: int) -> int:
     """
     p = random.getrandbits(length)
     # Set the most significant bit to 1
-    msb_and_lsb = (1 << length - 1) | 1
+    msb_and_lsb = 1 << length - 1
     # Set the least significant bit to 1
     msb_and_lsb |= 1
     p |= msb_and_lsb
