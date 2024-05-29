@@ -76,10 +76,56 @@ def generate_keypair(
 
     return public_key, private_key
 
+def decrypt(private_key: PrivateKey, encrypted_message: int) -> int:
+    """
+    Decrypt a message using a private key.
+
+    Args:
+        - `private_key: PrivateKey`: The private key.
+        - `encrypted_message: int`: The message to decrypt.
+
+    Returns:
+        - `int`: The decrypted message.
+
+    Example:
+    >>> private_key = PrivateKey(65537, 3233, 2753)
+    >>> encrypted_message = 855
+    >>> decrypted_message = decrypt(private_key, encrypted_message)
+    >>> print(decrypted_message)
+    1234
+    """
+    return pow(encrypted_message, private_key.d, private_key.n)
+
+def encrypt(public_key: PublicKey, message: int) -> int:
+    """
+    Encrypt a message using a public key.
+
+    Args:
+        - `public_key: PublicKey`: The public key.
+        - `message: int`: The message to encrypt.
+
+    Returns:
+        - `int`: The encrypted message.
+
+    Example:
+    >>> public_key = PublicKey(65537, 3233)
+    >>> message = 1234
+    >>> encrypted_message = encrypt(public_key, message)
+    >>> print(encrypted_message)
+    855
+    """
+    return pow(message, public_key.e, public_key.n)
+
 
 def main():
     """Run the test functions."""
     public_key, private_key = generate_keypair(2048)
+    message = 1234
+    encrypted_message = encrypt(public_key, message)
+    decrypted_message = decrypt(private_key, encrypted_message)
+    print(f"Original message: {message}")
+    print(f"Encrypted message: {encrypted_message}")
+    print(f"Decrypted message: {decrypted_message}")
 
 
 if __name__ == "__main__":
