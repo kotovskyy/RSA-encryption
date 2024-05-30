@@ -44,7 +44,8 @@ def _are_primes_acceptable(p: int, q: int, length: int, accurate: bool = True) -
 
 def generate_p_q(length: int, accurate: bool = True):
     """Generate two prime numbers p and q."""
-    p, q = 1, 1
+    p = rsa.prime.generate_prime_number(length // 2)
+    q = rsa.prime.generate_prime_number(length // 2)
     change_order = True
     while not _are_primes_acceptable(p, q, length, accurate):
         if change_order:
