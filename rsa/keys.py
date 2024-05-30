@@ -38,7 +38,8 @@ def _are_primes_acceptable(p: int, q: int, length: int, accurate: bool = True) -
     if not accurate:
         return True
 
-    n_size = p.bit_length() + q.bit_length()
+    n = p * q
+    n_size = n.bit_length()
     return n_size == length
 
 
