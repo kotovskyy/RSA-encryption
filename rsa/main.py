@@ -3,7 +3,7 @@
 from rsa.keys import PublicKey, PrivateKey, generate_keypair
 
 
-def decrypt(private_key: PrivateKey, encrypted_message: int) -> int:
+def decrypt(private_key: PrivateKey, encrypted_message: int) -> bytes:
     """
     Decrypt a message using a private key.
 
@@ -21,10 +21,10 @@ def decrypt(private_key: PrivateKey, encrypted_message: int) -> int:
     >>> print(decrypted_message)
     1234
     """
-    return pow(encrypted_message, private_key.d, private_key.n)
+    return pow(encrypted_message, private_key.d, private_key.n).to_bytes((private_key.n.bit_length() + 7) // 8, byteorder="big")
 
 
-def encrypt(public_key: PublicKey, message: int) -> int:
+def encrypt(public_key: PublicKey, message: int) -> bytes:
     """
     Encrypt a message using a public key.
 
@@ -42,7 +42,7 @@ def encrypt(public_key: PublicKey, message: int) -> int:
     >>> print(encrypted_message)
     855
     """
-    return pow(message, public_key.e, public_key.n)
+    return pow(message, public_key.e, public_key.n).to_bytes((public_key.n.bit_length() + 7) // 8, byteorder="big")
 
 
 def text_to_int(text: str) -> int:
