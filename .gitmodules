@@ -1,0 +1,3 @@
+[submodule "pngtools"]
+	path = pngtools
+	url = git@github.com:Vizels/PNG-metadata-reader.git
