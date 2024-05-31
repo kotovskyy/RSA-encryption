@@ -2,8 +2,8 @@
 
 from typing import Tuple
 import sympy
-import rsa.prime
 from Crypto.PublicKey import RSA
+import rsa.prime
 
 DEFAULT_EXPONENT = 65537
 
@@ -16,11 +16,28 @@ class AbstractKey:
         self.n = n
 
     def export(self, filename: str) -> None:
-        pass
+        """
+        Export the RSA key to a file.
+
+        Args:
+            filename (str): The name of the file to export the key to.
+
+        Raises:
+            NotImplementedError: This method is not implemented yet.
+        """
+        raise NotImplementedError
 
     def load(self, filename: str) -> None:
-        pass
-        
+        """
+        Loads the RSA key from the specified file.
+
+        Args:
+            filename (str): The path to the file containing the RSA key.
+
+        Raises:
+            NotImplementedError: This method is not implemented yet.
+        """
+        raise NotImplementedError
 
 
 class PublicKey(AbstractKey):
@@ -32,10 +49,11 @@ class PublicKey(AbstractKey):
             file.write(key.exportKey())
 
     def load(self, filename: str) -> None:
-        key = RSA.import_key(open(filename).read())
+        with open(filename, "rb", encoding="utf-8") as file:
+            data = file.read()
+        key = RSA.import_key(data)
         self.e = key.e
         self.n = key.n
-        
 
 
 class PrivateKey(AbstractKey):
@@ -53,7 +71,9 @@ class PrivateKey(AbstractKey):
             file.write(key.exportKey())
 
     def load(self, filename: str) -> None:
-        key = RSA.import_key(open(filename).read())
+        with open(filename, "rb", encoding="utf-8") as file:
+            data = file.read()
+        key = RSA.import_key(data)
         self.e = key.e
         self.n = key.n
         self.d = key.d
@@ -110,15 +130,16 @@ def generate_keypair(
     return public_key, private_key
 
 
-
 def main():
+    """
+    Generates a key pair, exports them to PEM files, and loads them back into memory.
+    """
     public_key, private_key = generate_keypair(1024)
     public_key.export("public_key.pem")
     private_key.export("private_key.pem")
     public_key.load("public_key.pem")
     private_key.load("private_key.pem")
-    print(f"Public key: {public_key.n}, {public_key.e}")
-    print(f"Private key: {private_key.n}, {private_key.e}, {private_key.d}, {private_key.p}, {private_key.q}")
+
 
 if __name__ == "__main__":
     main()
