@@ -3,6 +3,7 @@
 from typing import Tuple
 import sympy
 import rsa.prime
+from Crypto.PublicKey import RSA
 
 DEFAULT_EXPONENT = 65537
 
@@ -14,9 +15,27 @@ class AbstractKey:
         self.e = e
         self.n = n
 
+    def export(self, filename: str) -> None:
+        pass
+
+    def load(self, filename: str) -> None:
+        pass
+        
+
 
 class PublicKey(AbstractKey):
     """Public key for the RSA algorithm."""
+
+    def export(self, filename: str) -> None:
+        key = RSA.construct((self.n, self.e))
+        with open(filename, "wb") as file:
+            file.write(key.exportKey())
+
+    def load(self, filename: str) -> None:
+        key = RSA.import_key(open(filename).read())
+        self.e = key.e
+        self.n = key.n
+        
 
 
 class PrivateKey(AbstractKey):
@@ -27,6 +46,19 @@ class PrivateKey(AbstractKey):
         self.d = d
         self.p = p
         self.q = q
+
+    def export(self, filename: str) -> None:
+        key = RSA.construct((self.n, self.e, self.d, self.p, self.q))
+        with open(filename, "wb") as file:
+            file.write(key.exportKey())
+
+    def load(self, filename: str) -> None:
+        key = RSA.import_key(open(filename).read())
+        self.e = key.e
+        self.n = key.n
+        self.d = key.d
+        self.p = key.p
+        self.q = key.q
 
 
 def _are_primes_acceptable(p: int, q: int, length: int, accurate: bool = True) -> bool:
@@ -76,3 +108,17 @@ def generate_keypair(
     private_key = PrivateKey(e, n, d, p, q)
 
     return public_key, private_key
+
+
+
+def main():
+    public_key, private_key = generate_keypair(1024)
+    public_key.export("public_key.pem")
+    private_key.export("private_key.pem")
+    public_key.load("public_key.pem")
+    private_key.load("private_key.pem")
+    print(f"Public key: {public_key.n}, {public_key.e}")
+    print(f"Private key: {private_key.n}, {private_key.e}, {private_key.d}, {private_key.p}, {private_key.q}")
+
+if __name__ == "__main__":
+    main()
