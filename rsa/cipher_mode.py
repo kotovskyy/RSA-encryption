@@ -136,11 +136,131 @@ class ECB(AbstractMode):
         return decrypted_data
 
 
+class CBC(AbstractMode):
+    """Cipher Block Chaining (CBC) mode for RSA encryption."""
+
+    def add_padding(self, data_block: bytes) -> bytes:
+        """
+        Add padding to the data block.
+        Minimum padding size is 11 bytes. The padding is in the form:
+        `00 02 [random non-zero bytes] 00 [data_block]`
+
+        Args:
+            - `data_block: bytes`: The data block to pad.
+
+        Returns:
+            - `bytes`: The padded data block.
+
+        Raises:
+            - `ValueError`: If the data is too long.
+        """
+        if len(data_block) > self.block_size:
+            raise ValueError(
+                f"Data is too long. Max. data size is {self.block_size} bytes"
+            )
+
+        padding_size = self.key_size - len(data_block) - 3
+        padding = (
+            b"\x00"
+            + b"\x02"
+            + random.randbytes(padding_size).replace(b"\x00", b"\x01")
+            + b"\x00"
+        )
+
+        return padding + data_block
+
+    def encrypt_block(self, data_block: bytes) -> bytes:
+        """
+        Encrypt a single block of data. The block size is determined by the key size.
+
+        Args:
+            - `data_block: bytes`: The data block to encrypt.
+
+        Returns:
+            - `bytes`: The encrypted data block.
+        """
+        padded_data = self.add_padding(data_block)
+        return encrypt(self.public_key, int.from_bytes(padded_data, byteorder="big"))
+    
+    def encrypt(self, data: bytes) -> bytes:
+        """
+        Encrypt the data using the CBC mode.
+
+        Args:
+            - `data: bytes`: The data to encrypt.
+
+        Returns:
+            - `bytes`: The encrypted data.
+        """
+        initial_vector = random.randbytes(self.key_size)
+        encrypted_data = b"" + initial_vector
+        for i in range(0, len(data), self.block_size):
+            data_block = data[i : i + self.block_size]
+            encrypted_block = self.encrypt_block(bytes(b1 ^ b2 for b1, b2 in zip(data_block, initial_vector)))
+            encrypted_data += encrypted_block
+            initial_vector = encrypted_block
+        
+        return encrypted_data
+
+    def remove_padding(self, data_block: bytes):
+        """
+        Remove the padding from the data block.
+
+        Args:
+            - `data_block: bytes`: The data block to remove padding from.
+
+        Returns:
+            - `bytes`: The data block without padding.
+        """
+        padding = data_block[0:2]
+        if padding != b"\x00\x02":
+            raise ValueError("Invalid padding")
+        padding_end = data_block.find(b"\x00", 2)
+
+        return data_block[padding_end + 1 :]
+
+    def decrypt_block(self, data_block: bytes) -> bytes:
+        """
+        Decrypt a single block of data. The block size is determined by the key size.
+
+        Args:
+            - `data_block: bytes`: The data block to decrypt.
+
+        Returns:
+            - `bytes`: The decrypted data block.
+        """
+        decrypted_data = decrypt(
+            self.private_key, int.from_bytes(data_block, byteorder="big")
+        )
+        unpadded_data = self.remove_padding(decrypted_data)
+        return unpadded_data
+
+    def decrypt(self, data: bytes) -> bytes:
+        """
+        Decrypt the data using the CBC mode.
+
+        Args:
+            - `data: bytes`: The data to decrypt.
+
+        Returns:
+            - `bytes`: The decrypted data.
+        """
+        initial_vector = data[0:self.key_size]
+        decrypted_data = b""
+        for i in range(self.key_size, len(data), self.key_size):
+            data_block = data[i : i + self.key_size]
+            decrypted_block = self.decrypt_block(data_block)
+            decrypted_data += bytes(b1 ^ b2 for b1, b2 in zip(decrypted_block, initial_vector))
+            initial_vector = data_block
+        
+        return decrypted_data
+
+
 def main():
     """Test the modes of operation."""
     message = "Hello Vizels you are the best homosexual" * 1
     publick_key, private_key = generate_keypair(2048)
-    mode = ECB(publick_key, private_key)
+    mode = CBC(publick_key, private_key)
     encrypted_message = mode.encrypt(message.encode("utf-8"))
     print(f"Encrypted data: {encrypted_message}")
     decrypted_message = mode.decrypt(encrypted_message)
