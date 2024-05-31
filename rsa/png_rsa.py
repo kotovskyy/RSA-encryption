@@ -3,7 +3,7 @@
 from pngtools.png.PNG import PNG
 from pngtools.png.chunks import Chunk
 from rsa.keys import PublicKey, PrivateKey, generate_keypair
-from rsa.cipher_mode import ECB
+from rsa.cipher_mode import ECB, CBC
 
 
 class PNG_RSA:
@@ -52,6 +52,8 @@ class PNG_RSA:
         """
         if method == "ECB":
             return ECB(self.public_key, self.private_key)
+        elif method == "CBC":
+            return CBC(self.public_key, self.private_key)
         raise ValueError("Invalid mode")
 
     def _get_IDAT(self) -> Chunk:
@@ -83,7 +85,7 @@ class PNG_RSA:
 
         Args:
             - `method: str`: The method to use for encryption.
-            Available methods: "ECB".
+            Available methods: "ECB", "CBC".
 
         Returns:
             - `bytes`: The encrypted data.
@@ -109,14 +111,14 @@ class PNG_RSA:
         """
         Decrypt the image using the RSA algorithm and given method.
         Methods correspond to the modes of operation in the RSA algorithm.
-        Available methods: "ECB".
+        Available methods: "ECB", "CBC".
 
         Important: Make sure that you decrypt the image using the same method
         that was used to encrypt it.
 
         Args:
             - `method: str`: The method to use for decryption.
-            Available methods: "ECB".
+            Available methods: "ECB", "CBC".
 
         Returns:
             - `bytes`: The decrypted data.
@@ -143,8 +145,8 @@ def main():
     filepath = "pngtools/images/image2.png"
     encryptor = PNG_RSA(filepath)
     encryptor.generate_keypair(2048)
-    _ = encryptor.encrypt("ECB")
-    _ = encryptor.decrypt("ECB")
+    _ = encryptor.encrypt("CBC")
+    _ = encryptor.decrypt("CBC")
 
 
 if __name__ == "__main__":
