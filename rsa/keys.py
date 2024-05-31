@@ -49,7 +49,7 @@ class PublicKey(AbstractKey):
             file.write(key.exportKey())
 
     def load(self, filename: str) -> None:
-        with open(filename, "rb", encoding="utf-8") as file:
+        with open(filename, "rb") as file:
             data = file.read()
         key = RSA.import_key(data)
         self.e = key.e
@@ -71,7 +71,7 @@ class PrivateKey(AbstractKey):
             file.write(key.exportKey())
 
     def load(self, filename: str) -> None:
-        with open(filename, "rb", encoding="utf-8") as file:
+        with open(filename, "rb") as file:
             data = file.read()
         key = RSA.import_key(data)
         self.e = key.e
