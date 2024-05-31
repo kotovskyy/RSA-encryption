@@ -22,9 +22,11 @@ class PublicKey(AbstractKey):
 class PrivateKey(AbstractKey):
     """Private key for the RSA algorithm."""
 
-    def __init__(self, e: int, n: int, d: int) -> None:
+    def __init__(self, e: int, n: int, d: int, p: int, q: int) -> None:
         super().__init__(e, n)
         self.d = d
+        self.p = p
+        self.q = q
 
 
 def _are_primes_acceptable(p: int, q: int, length: int, accurate: bool = True) -> bool:
