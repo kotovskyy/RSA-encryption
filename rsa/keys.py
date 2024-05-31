@@ -73,6 +73,6 @@ def generate_keypair(
     # find such d that (d * e) % phi_n = 1
     d = sympy.mod_inverse(e, phi_n)
     public_key = PublicKey(e, n)
-    private_key = PrivateKey(e, n, d)
+    private_key = PrivateKey(e, n, d, p, q)
 
     return public_key, private_key
