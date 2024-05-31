@@ -21,7 +21,9 @@ def decrypt(private_key: PrivateKey, encrypted_message: int) -> bytes:
     >>> print(decrypted_message)
     1234
     """
-    return pow(encrypted_message, private_key.d, private_key.n).to_bytes((private_key.n.bit_length() + 7) // 8, byteorder="big")
+    return pow(encrypted_message, private_key.d, private_key.n).to_bytes(
+        (private_key.n.bit_length() + 7) // 8, byteorder="big"
+    )
 
 
 def encrypt(public_key: PublicKey, message: int) -> bytes:
@@ -42,7 +44,9 @@ def encrypt(public_key: PublicKey, message: int) -> bytes:
     >>> print(encrypted_message)
     855
     """
-    return pow(message, public_key.e, public_key.n).to_bytes((public_key.n.bit_length() + 7) // 8, byteorder="big")
+    return pow(message, public_key.e, public_key.n).to_bytes(
+        (public_key.n.bit_length() + 7) // 8, byteorder="big"
+    )
 
 
 def text_to_int(text: str) -> int:
