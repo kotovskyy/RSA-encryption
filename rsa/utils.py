@@ -1,5 +1,6 @@
 """Util functions for the RSA algorithm."""
 
+import os
 from rsa.keys import PublicKey, PrivateKey, generate_keypair
 
 
@@ -71,6 +72,22 @@ def decrypt_text(private_key: PrivateKey, message: int) -> str:
     """Decrypt a text message using a private key."""
     message = decrypt(private_key, message)
     return int_to_text(message)
+
+
+def check_read_access(filepath: str) -> None:
+    """Check if the file exists and has read access."""
+    if not os.path.exists(filepath):
+        raise FileNotFoundError(f"File '{filepath}' does not exist.")
+    if not os.access(filepath, os.R_OK):
+        raise PermissionError(f"No read access to file '{filepath}'.")
+
+
+def check_write_access(filepath: str) -> None:
+    """Check if the file exists and has write access."""
+    if not os.path.exists(filepath):
+        raise FileNotFoundError(f"File '{filepath}' does not exist.")
+    if not os.access(filepath, os.W_OK):
+        raise PermissionError(f"No write access to file '{filepath}'.")
 
 
 def main():
