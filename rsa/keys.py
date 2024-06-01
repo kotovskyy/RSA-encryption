@@ -4,6 +4,7 @@ from typing import Tuple
 import sympy
 from Crypto.PublicKey import RSA
 import rsa.prime
+from rsa.common_utils import check_read_access
 
 DEFAULT_EXPONENT = 65537
 
@@ -15,20 +16,20 @@ class AbstractKey:
         self.e = e
         self.n = n
 
-    def export(self, filename: str) -> None:
+    def export(self, filepath: str) -> None:
         """
         Export the RSA key to a file.
 
         Args:
-            filename (str): The name of the file to export the key to.
+            - `filepath: str`: The name of the file to export the key to.
 
         Raises:
-            NotImplementedError: This method is not implemented yet.
+            - `NotImplementedError`: This method is not implemented yet.
         """
         raise NotImplementedError
 
     @classmethod
-    def load(cls, filename: str) -> None:
+    def load(cls, filepath: str) -> None:
         """
         Loads the RSA key from the specified file.
 
@@ -44,14 +45,16 @@ class AbstractKey:
 class PublicKey(AbstractKey):
     """Public key for the RSA algorithm."""
 
-    def export(self, filename: str) -> None:
+    def export(self, filepath: str) -> None:
         key = RSA.construct((self.n, self.e))
-        with open(filename, "wb") as file:
+        with open(filepath, "wb") as file:
             file.write(key.exportKey())
 
     @classmethod
-    def load(cls, filename: str) -> 'PublicKey':
-        with open(filename, "rb") as file:
+    def load(cls, filepath: str) -> "PublicKey":
+        check_read_access(filepath)
+
+        with open(filepath, "rb") as file:
             data = file.read()
         key = RSA.import_key(data)
         return PublicKey(key.e, key.n)
@@ -66,14 +69,16 @@ class PrivateKey(AbstractKey):
         self.p = p
         self.q = q
 
-    def export(self, filename: str) -> None:
+    def export(self, filepath: str) -> None:
         key = RSA.construct((self.n, self.e, self.d, self.p, self.q))
-        with open(filename, "wb") as file:
+        with open(filepath, "wb") as file:
             file.write(key.exportKey())
 
     @classmethod
-    def load(self, filename: str) -> 'PrivateKey':
-        with open(filename, "rb") as file:
+    def load(cls, filepath: str) -> "PrivateKey":
+        check_read_access(filepath)
+
+        with open(filepath, "rb") as file:
             data = file.read()
         key = RSA.import_key(data)
         return PrivateKey(key.e, key.n, key.d, key.p, key.q)
