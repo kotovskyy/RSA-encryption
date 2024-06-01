@@ -2,7 +2,7 @@
 
 import random
 from rsa.keys import PublicKey, PrivateKey, generate_keypair
-from rsa.utils import encrypt, decrypt
+from rsa.rsa_utils import encrypt, decrypt
 
 
 class BaseMode:
