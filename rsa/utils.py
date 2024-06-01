@@ -1,4 +1,4 @@
-"""Test functions for the RSA algorithm."""
+"""Util functions for the RSA algorithm."""
 
 from rsa.keys import PublicKey, PrivateKey, generate_keypair
 
