@@ -27,7 +27,8 @@ class AbstractKey:
         """
         raise NotImplementedError
 
-    def load(self, filename: str) -> None:
+    @classmethod
+    def load(cls, filename: str) -> None:
         """
         Loads the RSA key from the specified file.
 
@@ -48,12 +49,12 @@ class PublicKey(AbstractKey):
         with open(filename, "wb") as file:
             file.write(key.exportKey())
 
-    def load(self, filename: str) -> None:
+    @classmethod
+    def load(cls, filename: str) -> 'PublicKey':
         with open(filename, "rb") as file:
             data = file.read()
         key = RSA.import_key(data)
-        self.e = key.e
-        self.n = key.n
+        return PublicKey(key.e, key.n)
 
 
 class PrivateKey(AbstractKey):
@@ -70,15 +71,12 @@ class PrivateKey(AbstractKey):
         with open(filename, "wb") as file:
             file.write(key.exportKey())
 
-    def load(self, filename: str) -> None:
+    @classmethod
+    def load(self, filename: str) -> 'PrivateKey':
         with open(filename, "rb") as file:
             data = file.read()
         key = RSA.import_key(data)
-        self.e = key.e
-        self.n = key.n
-        self.d = key.d
-        self.p = key.p
-        self.q = key.q
+        return PrivateKey(key.e, key.n, key.d, key.p, key.q)
 
 
 def _are_primes_acceptable(p: int, q: int, length: int, accurate: bool = True) -> bool:
