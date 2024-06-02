@@ -114,13 +114,13 @@ class ECB(BaseMode):
         Returns:
             - `bytes`: The encrypted data.
         """
-        self.block_size = self.key_size - 11 if additional_pad else self.key_size-1
+        self.block_size = self.key_size - 11 if additional_pad else self.key_size - 1
         encrypted_data = b""
         for i in range(0, len(data), self.block_size):
             data_block = data[i : i + self.block_size]
             encrypted_block = self.encrypt_block(data_block, additional_pad)
             encrypted_data += encrypted_block
-            
+
         return encrypted_data
 
     def decrypt(self, data: bytes, additional_pad: bool = True) -> bytes:
@@ -142,14 +142,14 @@ class ECB(BaseMode):
             if i + self.key_size >= len(data) and not additional_pad:
                 decrypted_block = decrypted_block.lstrip(b"\x00")
             decrypted_data += decrypted_block
-            
+
         return decrypted_data
 
 
 class CBC(BaseMode):
     """Cipher Block Chaining (CBC) mode for RSA encryption."""
 
-    def encrypt(self, data: bytes) -> bytes:
+    def encrypt(self, data: bytes, additional_pad: bool = True) -> bytes:
         """
         Encrypt the data using the CBC mode.
 
@@ -159,19 +159,21 @@ class CBC(BaseMode):
         Returns:
             - `bytes`: The encrypted data.
         """
+        self.block_size = self.key_size - 11 if additional_pad else self.key_size - 1
         initial_vector = random.randbytes(self.key_size)
         encrypted_data = b"" + initial_vector
         for i in range(0, len(data), self.block_size):
             data_block = data[i : i + self.block_size]
             encrypted_block = self.encrypt_block(
-                bytes(b1 ^ b2 for b1, b2 in zip(data_block, initial_vector))
+                bytes(b1 ^ b2 for b1, b2 in zip(data_block, initial_vector)),
+                additional_pad,
             )
             encrypted_data += encrypted_block
             initial_vector = encrypted_block
 
         return encrypted_data
 
-    def decrypt(self, data: bytes) -> bytes:
+    def decrypt(self, data: bytes, additional_pad: bool = True) -> bytes:
         """
         Decrypt the data using the CBC mode.
 
@@ -185,7 +187,9 @@ class CBC(BaseMode):
         decrypted_data = b""
         for i in range(self.key_size, len(data), self.key_size):
             data_block = data[i : i + self.key_size]
-            decrypted_block = self.decrypt_block(data_block)
+            decrypted_block = self.decrypt_block(data_block, additional_pad)
+            if not additional_pad:
+                decrypted_block = decrypted_block[1:]
             decrypted_data += bytes(
                 b1 ^ b2 for b1, b2 in zip(decrypted_block, initial_vector)
             )
@@ -196,7 +200,7 @@ class CBC(BaseMode):
 
 def main():
     """Test the modes of operation."""
-    message = "Hello Vizels you are the best homosexual" * 1
+    message = "Hello Vizels you are the best" * 50
     publick_key, private_key = generate_keypair(2048)
     mode = CBC(publick_key, private_key)
     encrypted_message = mode.encrypt(message.encode("utf-8"))
