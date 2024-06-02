@@ -147,7 +147,12 @@ class ECB(BaseMode):
 
 
 class CBC(BaseMode):
-    """Cipher Block Chaining (CBC) mode for RSA encryption."""
+    """
+    Cipher Block Chaining (CBC) mode for RSA encryption.
+    !Warning: This mode is not secure for RSA encryption.
+    !Warning: This mode is not working with `additional_pad = True`.
+    !Warning: Version for test purposes.
+    """
 
     def encrypt(self, data: bytes, additional_pad: bool = True) -> bytes:
         """
@@ -198,14 +203,67 @@ class CBC(BaseMode):
         return decrypted_data
 
 
+class CTR(BaseMode):
+    """Counter (CTR) mode for RSA encryption."""
+    def encrypt(self, data: bytes, additional_pad: bool = False) -> bytes:
+        """
+        Encrypt the data using the CBC mode.
+
+        Args:
+            - `data: bytes`: The data to encrypt.
+
+        Returns:
+            - `bytes`: The encrypted data.
+        """
+        self.block_size = self.key_size - 11 if additional_pad else self.key_size
+        nonce = random.randbytes(self.block_size)
+        encrypted_data = b"" + nonce
+        for i in range(0, len(data), self.block_size):
+            data_block = data[i : i + self.block_size]
+            encrypted_counter = self.encrypt_block(nonce, additional_pad)
+            if len(data_block) != self.block_size:
+                data_block = b"\x00" * (self.block_size - len(data_block)) + data_block
+            encrypted_block = bytes(b1 ^ b2 for b1, b2 in zip(data_block, encrypted_counter))
+            print(f"Encrypted block len: {len(encrypted_block)}")
+            encrypted_data += encrypted_block
+            nonce = int.to_bytes(int.from_bytes(nonce, byteorder="big") + 1, self.block_size, byteorder="big")
+
+        return encrypted_data
+
+    def decrypt(self, data: bytes, additional_pad: bool = False) -> bytes:
+        """
+        Decrypt the data using the CBC mode.
+
+        Args:
+            - `data: bytes`: The data to decrypt.
+
+        Returns:
+            - `bytes`: The decrypted data.
+        """
+        self.block_size = self.key_size - 11 if additional_pad else self.key_size
+        nonce = data[0 : self.block_size]
+        decrypted_data = b""
+        for i in range(self.block_size, len(data), self.key_size):
+            data_block = data[i : i + self.key_size]
+            encrypted_counter = self.encrypt_block(nonce, additional_pad)
+            decrypted_block = bytes(b1 ^ b2 for b1, b2 in zip(data_block, encrypted_counter))
+            print(f"Decrypted block len: {len(decrypted_block)}")
+            if i + self.key_size >= len(data) and not additional_pad:
+                decrypted_block = decrypted_block.lstrip(b"\x00")
+            decrypted_data += decrypted_block
+            nonce = int.to_bytes(int.from_bytes(nonce, byteorder="big") + 1, self.block_size, byteorder="big")
+
+        return decrypted_data
+
+
 def main():
     """Test the modes of operation."""
-    message = "Hello Vizels you are the best" * 50
-    publick_key, private_key = generate_keypair(2048)
-    mode = CBC(publick_key, private_key)
-    encrypted_message = mode.encrypt(message.encode("utf-8"))
+    message = "Hello Vizels you are the best" * 5
+    publick_key, private_key = generate_keypair(256)
+    mode = CTR(publick_key, private_key)
+    encrypted_message = mode.encrypt(message.encode("utf-8"), False)
     print(f"Encrypted data: {encrypted_message}")
-    decrypted_message = mode.decrypt(encrypted_message)
+    decrypted_message = mode.decrypt(encrypted_message, False)
     print(f"Decrypted data: {decrypted_message}")
 
 

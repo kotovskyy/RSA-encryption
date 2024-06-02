@@ -3,7 +3,7 @@
 from pngtools.png.PNG import PNG
 from pngtools.png.chunks import Chunk
 from rsa.keys import PublicKey, PrivateKey, generate_keypair
-from rsa.cipher_mode import ECB, CBC
+from rsa.cipher_mode import ECB, CBC, CTR
 
 
 class PNG_RSA:
@@ -52,6 +52,8 @@ class PNG_RSA:
         """
         if method == "ECB":
             return ECB(self.public_key, self.private_key)
+        if method == "CTR":
+            return CTR(self.public_key, self.private_key)
         if method == "CBC":
             return CBC(self.public_key, self.private_key)
         raise ValueError("Invalid mode")
