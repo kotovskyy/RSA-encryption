@@ -11,7 +11,7 @@ class BaseMode:
     def __init__(self, publick_key: PublicKey, private_key: PrivateKey):
         self.public_key = publick_key
         self.private_key = private_key
-        self.key_size = publick_key.n.bit_length() // 8
+        self.key_size = (publick_key.n.bit_length() + 7) // 8
         self.block_size = self.key_size - 11  # min 11 bytes for padding
 
     def encrypt(self, data: bytes) -> bytes:
@@ -52,7 +52,7 @@ class BaseMode:
 
         return padding + data_block
 
-    def encrypt_block(self, data_block: bytes) -> bytes:
+    def encrypt_block(self, data_block: bytes, additional_pad: bool = True) -> bytes:
         """
         Encrypt a single block of data. The block size is determined by the key size.
 
@@ -62,8 +62,9 @@ class BaseMode:
         Returns:
             - `bytes`: The encrypted data block.
         """
-        padded_data = self.add_padding(data_block)
-        return encrypt(self.public_key, int.from_bytes(padded_data, byteorder="big"))
+        if additional_pad:
+            data_block = self.add_padding(data_block)
+        return encrypt(self.public_key, int.from_bytes(data_block, byteorder="big"))
 
     def remove_padding(self, data_block: bytes):
         """
@@ -82,7 +83,7 @@ class BaseMode:
 
         return data_block[padding_end + 1 :]
 
-    def decrypt_block(self, data_block: bytes) -> bytes:
+    def decrypt_block(self, data_block: bytes, additional_pad: bool = True) -> bytes:
         """
         Decrypt a single block of data. The block size is determined by the key size.
 
@@ -95,14 +96,15 @@ class BaseMode:
         decrypted_data = decrypt(
             self.private_key, int.from_bytes(data_block, byteorder="big")
         )
-        unpadded_data = self.remove_padding(decrypted_data)
-        return unpadded_data
+        if additional_pad:
+            decrypted_data = self.remove_padding(decrypted_data)
+        return decrypted_data
 
 
 class ECB(BaseMode):
     """Electronic Codebook (ECB) mode for RSA encryption."""
 
-    def encrypt(self, data: bytes) -> bytes:
+    def encrypt(self, data: bytes, additional_pad: bool = True) -> bytes:
         """
         Encrypt the data using the ECB mode.
 
@@ -112,13 +114,16 @@ class ECB(BaseMode):
         Returns:
             - `bytes`: The encrypted data.
         """
+        self.block_size = self.key_size - 11 if additional_pad else self.key_size-1
         encrypted_data = b""
         for i in range(0, len(data), self.block_size):
             data_block = data[i : i + self.block_size]
-            encrypted_data += self.encrypt_block(data_block)
+            encrypted_block = self.encrypt_block(data_block, additional_pad)
+            encrypted_data += encrypted_block
+            
         return encrypted_data
 
-    def decrypt(self, data: bytes) -> bytes:
+    def decrypt(self, data: bytes, additional_pad: bool = True) -> bytes:
         """
         Decrypt the data using the ECB mode.
 
@@ -131,8 +136,13 @@ class ECB(BaseMode):
         decrypted_data = b""
         for i in range(0, len(data), self.key_size):
             data_block = data[i : i + self.key_size]
-            decrypted_data += self.decrypt_block(data_block)
-
+            decrypted_block = self.decrypt_block(data_block, additional_pad)
+            if not additional_pad:
+                decrypted_block = decrypted_block[1:]
+            if i + self.key_size >= len(data) and not additional_pad:
+                decrypted_block = decrypted_block.lstrip(b"\x00")
+            decrypted_data += decrypted_block
+            
         return decrypted_data
 
 

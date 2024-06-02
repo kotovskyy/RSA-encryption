@@ -52,7 +52,7 @@ class PNG_RSA:
         """
         if method == "ECB":
             return ECB(self.public_key, self.private_key)
-        elif method == "CBC":
+        if method == "CBC":
             return CBC(self.public_key, self.private_key)
         raise ValueError("Invalid mode")
 
@@ -78,7 +78,7 @@ class PNG_RSA:
         self.image.chunks.remove(old_chunk)
         self.image.chunks.insert(index, new_chunk)
 
-    def encrypt(self, method: str = "ECB") -> bytes:
+    def encrypt(self, method: str = "ECB", additional_pad: bool = True) -> bytes:
         """
         Encrypt the image using the RSA algorithm and given method.
         Methods correspond to the modes of operation in the RSA algorithm.
@@ -94,7 +94,7 @@ class PNG_RSA:
 
         mode = self._choose_mode(method)
 
-        encrypted_data = mode.encrypt(idat_chunk.data)
+        encrypted_data = mode.encrypt(idat_chunk.data, additional_pad)
         new_chunk = Chunk(
             name="IDAT",
             size=len(encrypted_data),
@@ -107,7 +107,7 @@ class PNG_RSA:
 
         return encrypted_data
 
-    def decrypt(self, method: str = "ECB") -> bytes:
+    def decrypt(self, method: str = "ECB", additional_pad: bool = True) -> bytes:
         """
         Decrypt the image using the RSA algorithm and given method.
         Methods correspond to the modes of operation in the RSA algorithm.
@@ -126,7 +126,7 @@ class PNG_RSA:
         idat_chunk = self._get_IDAT()
         mode = self._choose_mode(method)
 
-        decrypted_data = mode.decrypt(idat_chunk.data)
+        decrypted_data = mode.decrypt(idat_chunk.data, additional_pad)
         new_chunk = Chunk(
             name="IDAT",
             size=len(decrypted_data),
