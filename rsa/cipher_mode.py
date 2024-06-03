@@ -258,10 +258,10 @@ class CTR(BaseMode):
 
 def main():
     """Test the modes of operation."""
-    message = "Hello Vizels you are the best" * 5
+    message = b"\x00 Hello vizels" * 20
     publick_key, private_key = generate_keypair(256)
-    mode = CTR(publick_key, private_key)
-    encrypted_message = mode.encrypt(message.encode("utf-8"), False)
+    mode = ECB(publick_key, private_key)
+    encrypted_message = mode.encrypt(message, False)
     print(f"Encrypted data: {encrypted_message}")
     decrypted_message = mode.decrypt(encrypted_message, False)
     print(f"Decrypted data: {decrypted_message}")
