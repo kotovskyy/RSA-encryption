@@ -3,7 +3,7 @@
 import random
 from rsa.keys import PublicKey, PrivateKey, generate_keypair
 from rsa.rsa_utils import encrypt, decrypt
-
+from binascii import hexlify
 
 class BaseMode:
     """Interface class for block cipher modes of operation."""
@@ -118,6 +118,9 @@ class ECB(BaseMode):
         encrypted_data = b""
         for i in range(0, len(data), self.block_size):
             data_block = data[i : i + self.block_size]
+            if not additional_pad:
+                data_block = b"\x01" + data_block
+                
             encrypted_block = self.encrypt_block(data_block, additional_pad)
             encrypted_data += encrypted_block
 
@@ -138,21 +141,17 @@ class ECB(BaseMode):
             data_block = data[i : i + self.key_size]
             decrypted_block = self.decrypt_block(data_block, additional_pad)
             if not additional_pad:
+                if i + self.key_size >= len(data):
+                    decrypted_block = decrypted_block.lstrip(b"\x00")
                 decrypted_block = decrypted_block[1:]
-            if i + self.key_size >= len(data) and not additional_pad:
-                decrypted_block = decrypted_block.lstrip(b"\x00")
+                    
             decrypted_data += decrypted_block
 
         return decrypted_data
 
 
 class CBC(BaseMode):
-    """
-    Cipher Block Chaining (CBC) mode for RSA encryption.
-    !Warning: This mode is not secure for RSA encryption.
-    !Warning: This mode is not working with `additional_pad = True`.
-    !Warning: Version for test purposes.
-    """
+    """Cipher Block Chaining (CBC) mode for RSA encryption."""
 
     def encrypt(self, data: bytes, additional_pad: bool = True) -> bytes:
         """
@@ -169,6 +168,11 @@ class CBC(BaseMode):
         encrypted_data = b"" + initial_vector
         for i in range(0, len(data), self.block_size):
             data_block = data[i : i + self.block_size]
+            if not additional_pad:
+                data_block = b"\x01" + data_block
+                if i + self.block_size >= len(data):
+                    data_block = b'\x00' * (self.key_size - len(data_block)) + data_block
+                    
             encrypted_block = self.encrypt_block(
                 bytes(b1 ^ b2 for b1, b2 in zip(data_block, initial_vector)),
                 additional_pad,
@@ -193,12 +197,17 @@ class CBC(BaseMode):
         for i in range(self.key_size, len(data), self.key_size):
             data_block = data[i : i + self.key_size]
             decrypted_block = self.decrypt_block(data_block, additional_pad)
-            if not additional_pad:
-                decrypted_block = decrypted_block[1:]
-            decrypted_data += bytes(
+            decrypted_block = bytes(
                 b1 ^ b2 for b1, b2 in zip(decrypted_block, initial_vector)
             )
+            if not additional_pad:
+                if i + self.key_size >= len(data):
+                    decrypted_block = decrypted_block.lstrip(b"\x00")
+                decrypted_block = decrypted_block[1:]
+            
+     
             initial_vector = data_block
+            decrypted_data += decrypted_block
 
         return decrypted_data
 
@@ -257,10 +266,13 @@ class CTR(BaseMode):
 
 
 def main():
+    # key 32 bit
+    public_key, private_key = generate_keypair(32)
     """Test the modes of operation."""
-    message = b"\x00 Hello vizels" * 20
-    publick_key, private_key = generate_keypair(256)
-    mode = ECB(publick_key, private_key)
+    message = b"\x00 Hello vizels \x00" * 5
+    # public_key = PublicKey.load("public_key.pem")
+    # private_key = PrivateKey.load("private_key.pem")
+    mode = CBC(public_key, private_key)
     encrypted_message = mode.encrypt(message, False)
     print(f"Encrypted data: {encrypted_message}")
     decrypted_message = mode.decrypt(encrypted_message, False)

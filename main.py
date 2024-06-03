@@ -5,7 +5,7 @@ from rsa.png_rsa import PNG_RSA
 from PIL import Image
 import numpy as np
 import io
-from rsa.cipher_mode import ECB, CBC
+from rsa.cipher_mode import ECB, CBC, CTR
 from binascii import hexlify
 
 def prettier_bytes(data: bytes, sep = ",") -> str:
@@ -26,7 +26,7 @@ def png_raw_image():
     If the image is in Palette mode, the data will be in the form:
     [index, index, index, index, ...] 
     """
-    image = Image.open("pngtools/images/image2.png")
+    image = Image.open("pngtools/images/penguin.png")
     image = image.convert("RGB")
     
     data = list(image.getdata())
@@ -40,8 +40,9 @@ def png_raw_image():
     data_unpacked = bytearray(data_unpacked)
     # print(f"RAW BYTES OF DATA: {prettier_bytes(data_unpacked)}")   
     
-    public_key = PublicKey.load("public_key.pem")
-    private_key = PrivateKey.load("private_key.pem")
+    # public_key = PublicKey.load("public_key.pem")
+    # private_key = PrivateKey.load("private_key.pem")
+    public_key, private_key = generate_keypair(256)
 
     ecb = ECB(public_key, private_key)
     additional_pad = False
@@ -71,32 +72,56 @@ def png_raw_image():
     cut_encrypted_data = b''
     for i in range(0, len(encrypted_data), key_size):
         if i + key_size >= len(encrypted_data):
-            cut_off_block = encrypted_data[i : remove_from_last_block]
+            cut_off_block = encrypted_data[i : i+remove_from_last_block]
             cut_ecnrypted_block = encrypted_data[i+remove_from_last_block : i+key_size]
         else:
-            cut_off_block = encrypted_data[i : remove_per_block]
+            cut_off_block = encrypted_data[i : i+remove_per_block]
             cut_ecnrypted_block = encrypted_data[i+remove_per_block : i+key_size]
             
         cut_off_data += cut_off_block
         cut_encrypted_data += cut_ecnrypted_block
         
-    
     print(f"Len cut encrypted data: {len(cut_encrypted_data)}")
     print(f"Len cut off data: {len(cut_off_data)}")
     new_image = Image.frombytes(image.mode, (image.width, image.height), cut_encrypted_data)
     new_image.save("ecnrypted_pil.png")
+    
+    total_len = len(cut_encrypted_data) + len(cut_off_data)
+    print(f"Total len: {total_len}")
+        
+    block_ctr = 0
+    encrypted_data = b''
+    for i in range(0, len(cut_encrypted_data), key_size-remove_per_block):
+        if block_ctr == n_blocks-1:
+            encrypted_block = cut_off_data[block_ctr*remove_per_block : ]
+            encrypted_block += cut_encrypted_data[i:]
+        else:
+            encrypted_block = cut_off_data[block_ctr*remove_per_block : (block_ctr+1)*remove_per_block]
+            encrypted_block += cut_encrypted_data[i: i+key_size-remove_per_block]
+        
+        block_ctr += 1
+        encrypted_data += encrypted_block
+        
+            
+    
+    print(f"Len restored encrypted data: {len(encrypted_data)}")
+    decrypted_data = ecb.decrypt(encrypted_data, additional_pad)
+    print(f"Len decrypted data: {len(decrypted_data)}")
+    
+    restored_image = Image.frombytes(image.mode, (image.width, image.height), decrypted_data)
+    restored_image.save("decrypted_pil.png")
     
     
     
     
 def main():
     "Test the RSA implementation."
-    # public_key, private_key = generate_keypair(256)
-    # public_key.export("public_key.pem")
-    # private_key.export("private_key.pem")
+    public_key, private_key = generate_keypair(256)
+    public_key.export("public_key.pem")
+    private_key.export("private_key.pem")
 
-    public_key = PublicKey.load("public_key.pem")
-    private_key = PrivateKey.load("private_key.pem")
+    # public_key = PublicKey.load("public_key.pem")
+    # private_key = PrivateKey.load("private_key.pem")
 
     png_rsa = PNG_RSA("pngtools/images/image2.png")
     png_rsa.set_public_key(public_key)
