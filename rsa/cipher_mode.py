@@ -118,7 +118,6 @@ class ECB(BaseMode):
         Returns:
             - `bytes`: The encrypted data.
         """
-        self.block_size = self.key_size - 11 if self.additional_pad else self.key_size - 1
         encrypted_data = b""
         for i in range(0, len(data), self.block_size):
             data_block = data[i : i + self.block_size]
@@ -167,7 +166,6 @@ class CBC(BaseMode):
         Returns:
             - `bytes`: The encrypted data.
         """
-        self.block_size = self.key_size - 11 if self.additional_pad else self.key_size - 1
         initial_vector = random.randbytes(self.key_size)
         encrypted_data = b"" + initial_vector
         for i in range(0, len(data), self.block_size):
@@ -226,7 +224,6 @@ class CTR(BaseMode):
         Returns:
             - `bytes`: The encrypted data.
         """
-        self.block_size = self.key_size - 11 if self.additional_pad else self.key_size
         nonce = random.randbytes(self.block_size)
         encrypted_data = b"" + nonce
         for i in range(0, len(data), self.block_size):
@@ -251,7 +248,6 @@ class CTR(BaseMode):
         Returns:
             - `bytes`: The decrypted data.
         """
-        self.block_size = self.key_size - 11 if self.additional_pad else self.key_size
         nonce = data[0 : self.block_size]
         decrypted_data = b""
         for i in range(self.block_size, len(data), self.key_size):
