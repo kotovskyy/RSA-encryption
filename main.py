@@ -26,7 +26,7 @@ def png_raw_image():
     If the image is in Palette mode, the data will be in the form:
     [index, index, index, index, ...] 
     """
-    image = Image.open("pngtools/images/penguin.png")
+    image = Image.open("pngtools/images/image3.png")
     image = image.convert("RGB")
     
     data = list(image.getdata())
@@ -42,7 +42,7 @@ def png_raw_image():
     
     # public_key = PublicKey.load("public_key.pem")
     # private_key = PrivateKey.load("private_key.pem")
-    public_key, private_key = generate_keypair(128)
+    public_key, private_key = generate_keypair(256)
 
     additional_pad = False
     ecb = CBC(public_key, private_key, additional_pad)
@@ -51,7 +51,7 @@ def png_raw_image():
     decrypted_data = ecb.decrypt(encrypted_data)
     # print(f"Decrypted data: {prettier_bytes(decrypted_data)}")
     print(f"\nLen original data: {len(data_unpacked)}\nLen encrypted data: {len(encrypted_data)}\nLen decrypted data: {len(decrypted_data)}")
-    initial_vector = encrypted_data[:ecb.key_size]
+    # initial_vector = encrypted_data[:ecb.key_size]
     #encrypted_data = encrypted_data[ecb.key_size:]
     image_part = encrypted_data[:len(data_unpacked)]
     # print(f"Encrypted part 1: {prettier_bytes(encrypted_part1)}")
@@ -96,7 +96,7 @@ def png_raw_image():
     new_image = Image.frombytes(image.mode, (image.width, image.height), encrypted_image_data)
     new_image.save("ecnrypted_pil.png")
     
-    total_len = len(encrypted_image_data) + len(backlog) + len(initial_vector)
+    total_len = len(encrypted_image_data) + len(backlog)
     print(f"Total len: {total_len}")
         
     block_ctr = 0
