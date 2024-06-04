@@ -175,6 +175,7 @@ class CBC(BaseMode):
                 if i + self.block_size >= len(data):
                     data_block = b'\x00' * (self.key_size - len(data_block)) + data_block
                     
+            #print(f"Data block: {data_block}")
             encrypted_block = self.encrypt_block(
                 bytes(b1 ^ b2 for b1, b2 in zip(data_block, initial_vector)))
             encrypted_data += encrypted_block
@@ -193,15 +194,19 @@ class CBC(BaseMode):
             - `bytes`: The decrypted data.
         """
         initial_vector = data[0 : self.key_size]
+        data = data[self.key_size:]
         decrypted_data = b""
-        for i in range(self.key_size, len(data), self.key_size):
+        for i in range(0, len(data), self.key_size):
             data_block = data[i : i + self.key_size]
             decrypted_block = self.decrypt_block(data_block)
+            if len(decrypted_block) != len(initial_vector):
+                print("XYI")
             decrypted_block = bytes(
                 b1 ^ b2 for b1, b2 in zip(decrypted_block, initial_vector)
             )
             if not self.additional_pad:
                 if i + self.key_size >= len(data):
+                    print("Decrypting last block")
                     decrypted_block = decrypted_block.lstrip(b"\x00")
                 decrypted_block = decrypted_block[1:]
             
@@ -265,15 +270,15 @@ class CTR(BaseMode):
 
 def main():
     # key 32 bit
-    public_key, private_key = generate_keypair(32)
+    public_key, private_key = generate_keypair(256)
     """Test the modes of operation."""
-    message = b"\x00 Hello vizels \x00" * 5
+    message = b"\x00 Hello vizels.. \x00" * 1
     # public_key = PublicKey.load("public_key.pem")
     # private_key = PrivateKey.load("private_key.pem")
-    mode = CBC(public_key, private_key)
-    encrypted_message = mode.encrypt(message, False)
+    mode = CBC(public_key, private_key, False)
+    encrypted_message = mode.encrypt(message)
     print(f"Encrypted data: {encrypted_message}")
-    decrypted_message = mode.decrypt(encrypted_message, False)
+    decrypted_message = mode.decrypt(encrypted_message)
     print(f"Decrypted data: {decrypted_message}")
 
 

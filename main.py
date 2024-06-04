@@ -42,68 +42,73 @@ def png_raw_image():
     
     # public_key = PublicKey.load("public_key.pem")
     # private_key = PrivateKey.load("private_key.pem")
-    public_key, private_key = generate_keypair(256)
+    public_key, private_key = generate_keypair(128)
 
     additional_pad = False
-    ecb = ECB(public_key, private_key, additional_pad)
+    ecb = CBC(public_key, private_key, additional_pad)
     encrypted_data = ecb.encrypt(data_unpacked)
     # print(f"Encrypted data: {prettier_bytes(encrypted_data)}")
-    #decrypted_data = ecb.decrypt(encrypted_data)
+    decrypted_data = ecb.decrypt(encrypted_data)
     # print(f"Decrypted data: {prettier_bytes(decrypted_data)}")
-    #print(f"\nLen original data: {len(data_unpacked)}\nLen encrypted data: {len(encrypted_data)}\nLen decrypted data: {len(decrypted_data)}")
-    
-    encrypted_part1 = encrypted_data[:len(data_unpacked)]
-    encrypted_part2 = encrypted_data[len(data_unpacked):]
+    print(f"\nLen original data: {len(data_unpacked)}\nLen encrypted data: {len(encrypted_data)}\nLen decrypted data: {len(decrypted_data)}")
+    initial_vector = encrypted_data[:ecb.key_size]
+    #encrypted_data = encrypted_data[ecb.key_size:]
+    image_part = encrypted_data[:len(data_unpacked)]
     # print(f"Encrypted part 1: {prettier_bytes(encrypted_part1)}")
     # print(f"Encrypted part 2: {prettier_bytes(encrypted_part2)}")
-    print(f"\nLen encrypted part 1: {len(encrypted_part1)}\nLen encrypted part 2: {len(encrypted_part2)}")
     
     key_size = ecb.key_size
 
 
-    n_overflow_bytes = len(encrypted_part2)
-    print(f"\nNumber of overflow bytes: {n_overflow_bytes}")
+    n_overflow_bytes = len(encrypted_data) - len(data_unpacked)
+    print(f"\nImage part len: {len(image_part)}\nOverflow bytes: {n_overflow_bytes}")
+
     n_blocks = len(encrypted_data) // key_size
     print(f"\nNumber of blocks: {n_blocks}")
-    remove_per_block = n_overflow_bytes // (n_blocks-1)
+
+    remove_per_block = n_overflow_bytes // n_blocks
     print(f"\nRemove per block: {remove_per_block}")
-    remove_from_last_block = n_overflow_bytes - remove_per_block * (n_blocks-1)
-    print(f"\nRemove from last block: {remove_from_last_block}")
     
-    cut_off_data = b''
-    cut_encrypted_data = b''
+
+    last_cut_len = n_overflow_bytes % n_blocks
+    print(f"\nLast cut len: {last_cut_len}")
+    
+    if last_cut_len != 0:
+        last_cut_data = encrypted_data[-last_cut_len:]
+        encrypted_data = encrypted_data[:-last_cut_len]
+    else:
+        last_cut_data = b''
+
+    encrypted_image_data = b''
+    backlog = b''
+
     for i in range(0, len(encrypted_data), key_size):
-        if i + key_size >= len(encrypted_data):
-            cut_off_block = encrypted_data[i : i+remove_from_last_block]
-            cut_ecnrypted_block = encrypted_data[i+remove_from_last_block : i+key_size]
-        else:
-            cut_off_block = encrypted_data[i : i+remove_per_block]
-            cut_ecnrypted_block = encrypted_data[i+remove_per_block : i+key_size]
-            
-        cut_off_data += cut_off_block
-        cut_encrypted_data += cut_ecnrypted_block
+        backlog += encrypted_data[i:i+remove_per_block]
+        encrypted_image_data += encrypted_data[i+remove_per_block : i+key_size]
+
+    backlog += last_cut_data
+
+
         
-    print(f"Len cut encrypted data: {len(cut_encrypted_data)}")
-    print(f"Len cut off data: {len(cut_off_data)}")
-    new_image = Image.frombytes(image.mode, (image.width, image.height), cut_encrypted_data)
+    print(f"Encrypted image data: {len(encrypted_image_data)}")
+    print(f"Len cut off data: {len(backlog)}")
+    
+    new_image = Image.frombytes(image.mode, (image.width, image.height), encrypted_image_data)
     new_image.save("ecnrypted_pil.png")
     
-    total_len = len(cut_encrypted_data) + len(cut_off_data)
+    total_len = len(encrypted_image_data) + len(backlog) + len(initial_vector)
     print(f"Total len: {total_len}")
         
     block_ctr = 0
     encrypted_data = b''
-    for i in range(0, len(cut_encrypted_data), key_size-remove_per_block):
-        if block_ctr == n_blocks-1:
-            encrypted_block = cut_off_data[block_ctr*remove_per_block : ]
-            encrypted_block += cut_encrypted_data[i:]
-        else:
-            encrypted_block = cut_off_data[block_ctr*remove_per_block : (block_ctr+1)*remove_per_block]
-            encrypted_block += cut_encrypted_data[i: i+key_size-remove_per_block]
+    for i in range(0, len(encrypted_image_data), key_size-remove_per_block):
+        encrypted_data += backlog[block_ctr * remove_per_block : block_ctr * remove_per_block + remove_per_block]
+        encrypted_data += encrypted_image_data[i: i+key_size-remove_per_block]
         
-        block_ctr += 1
-        encrypted_data += encrypted_block
-        
+        block_ctr = block_ctr + 1
+    
+    encrypted_data += last_cut_data#backlog[block_ctr * remove_per_block:]
+    #encrypted_data = initial_vector + encrypted_data
             
     
     print(f"Len restored encrypted data: {len(encrypted_data)}")
