@@ -44,13 +44,13 @@ def png_raw_image():
     # private_key = PrivateKey.load("private_key.pem")
     public_key, private_key = generate_keypair(256)
 
-    ecb = ECB(public_key, private_key)
     additional_pad = False
-    encrypted_data = ecb.encrypt(data_unpacked, additional_pad)
+    ecb = ECB(public_key, private_key, additional_pad)
+    encrypted_data = ecb.encrypt(data_unpacked)
     # print(f"Encrypted data: {prettier_bytes(encrypted_data)}")
-    decrypted_data = ecb.decrypt(encrypted_data, additional_pad)
+    #decrypted_data = ecb.decrypt(encrypted_data)
     # print(f"Decrypted data: {prettier_bytes(decrypted_data)}")
-    print(f"\nLen original data: {len(data_unpacked)}\nLen encrypted data: {len(encrypted_data)}\nLen decrypted data: {len(decrypted_data)}")
+    #print(f"\nLen original data: {len(data_unpacked)}\nLen encrypted data: {len(encrypted_data)}\nLen decrypted data: {len(decrypted_data)}")
     
     encrypted_part1 = encrypted_data[:len(data_unpacked)]
     encrypted_part2 = encrypted_data[len(data_unpacked):]
@@ -58,7 +58,9 @@ def png_raw_image():
     # print(f"Encrypted part 2: {prettier_bytes(encrypted_part2)}")
     print(f"\nLen encrypted part 1: {len(encrypted_part1)}\nLen encrypted part 2: {len(encrypted_part2)}")
     
-    key_size = public_key.n.bit_length() // 8
+    key_size = ecb.key_size
+
+
     n_overflow_bytes = len(encrypted_part2)
     print(f"\nNumber of overflow bytes: {n_overflow_bytes}")
     n_blocks = len(encrypted_data) // key_size
@@ -105,7 +107,7 @@ def png_raw_image():
             
     
     print(f"Len restored encrypted data: {len(encrypted_data)}")
-    decrypted_data = ecb.decrypt(encrypted_data, additional_pad)
+    decrypted_data = ecb.decrypt(encrypted_data)
     print(f"Len decrypted data: {len(decrypted_data)}")
     
     restored_image = Image.frombytes(image.mode, (image.width, image.height), decrypted_data)
