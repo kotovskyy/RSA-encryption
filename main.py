@@ -11,6 +11,7 @@ from binascii import hexlify
 def prettier_bytes(data: bytes, sep = ",") -> str:
     return hexlify(data, sep)
 
+
 def png_raw_image():
     """
     >>> Image.open(filepath: str) - open the image
@@ -26,7 +27,7 @@ def png_raw_image():
     If the image is in Palette mode, the data will be in the form:
     [index, index, index, index, ...] 
     """
-    image = Image.open("pngtools/images/image3.png")
+    image = Image.open("pngtools/images/penguin.png")
     image = image.convert("RGB")
     
     data = list(image.getdata())
@@ -123,20 +124,21 @@ def png_raw_image():
     
 def main():
     "Test the RSA implementation."
-    public_key, private_key = generate_keypair(256)
-    public_key.export("public_key.pem")
-    private_key.export("private_key.pem")
+    # public_key, private_key = generate_keypair(256)
+    # public_key.export("public_key.pem")
+    # private_key.export("private_key.pem")
 
     # public_key = PublicKey.load("public_key.pem")
     # private_key = PrivateKey.load("private_key.pem")
 
-    png_rsa = PNG_RSA("pngtools/images/image2.png")
-    png_rsa.set_public_key(public_key)
-    png_rsa.set_private_key(private_key)
-    encrypted_image = png_rsa.encrypt("ECB", False)
-    decrypted_image = png_rsa.decrypt("ECB", False)
+    png_rsa = PNG_RSA("pngtools/images/penguin.png", False)
+    png_rsa.generate_keypair(256)
+    # png_rsa.set_public_key(public_key)
+    # png_rsa.set_private_key(private_key)
+    encrypted_image = png_rsa.encrypt("ECB", make_showable=True)
+    # decrypted_image = png_rsa.decrypt("ECB", False)
     
 
 if __name__ == "__main__":
-    # main()
-    png_raw_image()
+    main()
+    # png_raw_image()
