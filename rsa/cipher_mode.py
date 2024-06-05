@@ -194,7 +194,7 @@ class CBC(BaseMode):
         Returns:
             - `bytes`: The decrypted data.
         """
-        initial_vector = data[0 : self.key_size]
+        initial_vector = data[: self.key_size]
         data = data[self.key_size:]
         decrypted_data = b""
         for i in range(0, len(data), self.key_size):
@@ -234,7 +234,6 @@ class CTR(BaseMode):
             if len(data_block) != self.block_size:
                 data_block = b"\x00" * (self.block_size - len(data_block)) + data_block
             encrypted_block = bytes(b1 ^ b2 for b1, b2 in zip(data_block, encrypted_counter))
-            print(f"Encrypted block len: {len(encrypted_block)}")
             encrypted_data += encrypted_block
             nonce = int.to_bytes(int.from_bytes(nonce, byteorder="big") + 1, self.block_size, byteorder="big")
 
@@ -256,7 +255,6 @@ class CTR(BaseMode):
             data_block = data[i : i + self.key_size]
             encrypted_counter = self.encrypt_block(nonce)
             decrypted_block = bytes(b1 ^ b2 for b1, b2 in zip(data_block, encrypted_counter))
-            print(f"Decrypted block len: {len(decrypted_block)}")
             if i + self.key_size >= len(data) and not self.additional_pad:
                 decrypted_block = decrypted_block.lstrip(b"\x00")
             decrypted_data += decrypted_block
@@ -271,7 +269,7 @@ def main():
     # public_key.export("public_key.pem")
     # private_key.export("private_key.pem")
     """Test the modes of operation."""
-    message = b"\x00 Hello vizels.. \x00" * 100
+    message = b"\x00 Hello vizels.. \x00" * 200
     # public_key = PublicKey.load("public_key.pem")
     # private_key = PrivateKey.load("private_key.pem")
     mode = CBC(public_key, private_key, False)

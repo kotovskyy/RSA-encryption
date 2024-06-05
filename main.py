@@ -150,12 +150,12 @@ def main():
     # public_key = PublicKey.load("public_key.pem")
     # private_key = PrivateKey.load("private_key.pem")
 
-    png_rsa = PNG_RSA("pngtools/images/penguin.png", False)
+    png_rsa = PNG_RSA("pngtools/images/penguin.png", True)
     png_rsa.generate_keypair(256)
     # png_rsa.set_public_key(public_key)
     # png_rsa.set_private_key(private_key)
-    encrypted_image = png_rsa.encrypt("CBC", make_showable=False)
-    decrypted_image = png_rsa.decrypt("CBC", is_raw=False)
+    encrypted_image = png_rsa.encrypt("ECB", make_showable=True)
+    decrypted_image = png_rsa.decrypt("ECB", is_raw=True)
     
 
 if __name__ == "__main__":
