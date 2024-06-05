@@ -4,7 +4,7 @@ from pngtools.png.PNG import PNG
 from pngtools.png.chunks import Chunk
 from rsa.keys import PublicKey, PrivateKey, generate_keypair
 from rsa.cipher_mode import ECB, CBC, CTR, BaseMode
-from PIL import Image
+from PIL import Image, PngImagePlugin
 
 class PNG_RSA:
     """PNG_RSA interface for encrypting and decrypting PNG images using RSA."""
@@ -36,37 +36,68 @@ class PNG_RSA:
     def _encrypt_raw_image(self, mode: BaseMode):
         data_unpacked, img_width, img_height = self.get_image_raw_data()
         encrypted_data = mode.encrypt(data_unpacked)
-        image_part = encrypted_data[:len(data_unpacked)]
+        if isinstance(mode, CBC):
+            initial_vector = encrypted_data[:self.key_size]
+            encrypted_data = encrypted_data[self.key_size:]
+            
         n_overflow_bytes = len(encrypted_data) - len(data_unpacked)
         n_blocks = len(encrypted_data) // self.key_size
         remove_per_block = n_overflow_bytes // n_blocks
         last_cut_len = n_overflow_bytes % n_blocks
         
-        if last_cut_len != 0:
-            last_cut_data = encrypted_data[-last_cut_len:]
-            encrypted_data = encrypted_data[:-last_cut_len]
-        else:
-            last_cut_data = b''
-
-        backlog = b''               # data cut from every encrypted block
-        encrypted_image_data = b''  # encrypted data to be stored in the image's IDAT
+        backlog = b''
+        encrypted_image_data = b''
         
-        print(f"\nNumber of blocks: {n_blocks}")
-        print(f"\nRemove per block: {remove_per_block}")
-        print(f"Self.key_size = {self.key_size}")
         for i in range(0, len(encrypted_data), self.key_size):
-            print(f"i = {i}")
             backlog += encrypted_data[i:i+remove_per_block]
             encrypted_image_data += encrypted_data[i+remove_per_block : i+self.key_size]
 
-        backlog += last_cut_data
-        
-        print(len(encrypted_image_data))
-        new_image = Image.frombytes("RGB", (img_width, img_height), encrypted_image_data)
-        new_image.save("ecnrypted_pil.png")
+        if last_cut_len != 0:
+            backlog += encrypted_image_data[-last_cut_len: ]
+            encrypted_image_data = encrypted_image_data[: -last_cut_len]
 
+        
+        meta = PngImagePlugin.PngInfo()
+        meta.add_text("rm_per_block", str(remove_per_block))
+        meta.add_text("Overflow_data", backlog)
+        if isinstance(mode, CBC):
+            meta.add_text("init_vector", initial_vector)
+            
+        new_image = Image.frombytes("RGB", (img_width, img_height), encrypted_image_data)
+        new_image.save("encrypted_pil.png", pnginfo=meta)        
+    
         return encrypted_data
     
+    def _decrypt_raw_image(self, mode: BaseMode):
+        image = Image.open("encrypted_pil.png")
+        image = image.convert("RGB")
+        data = list(image.getdata())
+        data_unpacked = [pixel_value for pixel in data for pixel_value in pixel]
+        encrypted_image_data = bytearray(data_unpacked)
+        
+        backlog = image.info["Overflow_data"].encode("latin-1")
+        remove_per_block = int(image.info["rm_per_block"])
+        if isinstance(mode, CBC):
+            initial_vector = image.info["init_vector"].encode("latin-1")
+                
+        block_ctr = 0
+        encrypted_data = b''
+        for i in range(0, len(encrypted_image_data), self.key_size-remove_per_block):
+            encrypted_data += backlog[block_ctr * remove_per_block : block_ctr * remove_per_block + remove_per_block]
+            encrypted_data += encrypted_image_data[i: i+self.key_size-remove_per_block]
+            
+            block_ctr = block_ctr + 1
+    
+        encrypted_data += backlog[block_ctr * remove_per_block:]
+        if isinstance(mode, CBC):
+            encrypted_data = initial_vector + encrypted_data
+
+        decrypted_data = mode.decrypt(encrypted_data)
+        restored_image = Image.frombytes(image.mode, (image.width, image.height), decrypted_data)
+        restored_image.save("decrypted_pil.png")
+        
+        return decrypted_data
+
     def _encrypt_image(self, mode: BaseMode):
         idat_chunk = self._get_IDAT()
         
@@ -81,7 +112,23 @@ class PNG_RSA:
         self.image.saveFile("encrypted.png", True)
 
         return encrypted_data
-        
+    
+    def _decrypt_image(self, mode: BaseMode):
+        idat_chunk = self._get_IDAT()
+
+        decrypted_data = mode.decrypt(idat_chunk.data)
+        new_chunk = Chunk(
+            name="IDAT",
+            size=len(decrypted_data),
+            data=decrypted_data,
+            crc=PNG._calculateCRC("IDAT", decrypted_data),
+        )
+
+        self.replace_chunk(idat_chunk, new_chunk)
+        self.image.saveFile("decrypted.png", True)
+
+        return decrypted_data
+    
     def generate_keypair(self, key_size: int) -> None:
         """
         Generate a keypair for the RSA algorithm.
@@ -167,7 +214,7 @@ class PNG_RSA:
             
         return encrypted_data
 
-    def decrypt(self, method: str = "ECB") -> bytes:
+    def decrypt(self, method: str = "ECB", is_raw: bool = True) -> bytes:
         """
         Decrypt the image using the RSA algorithm and given method.
         Methods correspond to the modes of operation in the RSA algorithm.
@@ -183,22 +230,15 @@ class PNG_RSA:
         Returns:
             - `bytes`: The decrypted data.
         """
-        idat_chunk = self._get_IDAT()
         mode = self._choose_mode(method)
-
-        decrypted_data = mode.decrypt(idat_chunk.data)
-        new_chunk = Chunk(
-            name="IDAT",
-            size=len(decrypted_data),
-            data=decrypted_data,
-            crc=PNG._calculateCRC("IDAT", decrypted_data),
-        )
-
-        self.replace_chunk(idat_chunk, new_chunk)
-        self.image.saveFile("decrypted.png", True)
-
+        
+        if is_raw:
+            decrypted_data = self._decrypt_raw_image(mode)
+        else:
+            decrypted_data = self._decrypt_image(mode)
+        
         return decrypted_data
-
+    
 
 def main():
     """Test the PNG_RSA class."""

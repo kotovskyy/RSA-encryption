@@ -52,8 +52,9 @@ def png_raw_image():
     decrypted_data = ecb.decrypt(encrypted_data)
     # print(f"Decrypted data: {prettier_bytes(decrypted_data)}")
     print(f"\nLen original data: {len(data_unpacked)}\nLen encrypted data: {len(encrypted_data)}\nLen decrypted data: {len(decrypted_data)}")
-    # initial_vector = encrypted_data[:ecb.key_size]
-    #encrypted_data = encrypted_data[ecb.key_size:]
+    initial_vector = encrypted_data[:ecb.key_size]
+    encrypted_data = encrypted_data[ecb.key_size:]
+    
     image_part = encrypted_data[:len(data_unpacked)]
     # print(f"Encrypted part 1: {prettier_bytes(encrypted_part1)}")
     # print(f"Encrypted part 2: {prettier_bytes(encrypted_part2)}")
@@ -74,20 +75,32 @@ def png_raw_image():
     last_cut_len = n_overflow_bytes % n_blocks
     print(f"\nLast cut len: {last_cut_len}")
     
-    if last_cut_len != 0:
-        last_cut_data = encrypted_data[-last_cut_len:]
-        encrypted_data = encrypted_data[:-last_cut_len]
-    else:
-        last_cut_data = b''
+    # if last_cut_len != 0:
+    #     last_cut_data = encrypted_data[-last_cut_len:]
+    #     encrypted_data = encrypted_data[:-last_cut_len]
+    # else:
+    #     last_cut_data = b''
+
+    # print(f"Len last cut data: {len(last_cut_data)}")
+    print(f"Len encrypted data: {len(encrypted_data)}") # correct
 
     encrypted_image_data = b''
     backlog = b''
 
     for i in range(0, len(encrypted_data), key_size):
         backlog += encrypted_data[i:i+remove_per_block]
+        if len(encrypted_data[i: i+remove_per_block]) != remove_per_block:
+            print(f"BLOCK REMOVED INCORRECT LENGTH: {len(encrypted_data[i: i+remove_per_block])}")
         encrypted_image_data += encrypted_data[i+remove_per_block : i+key_size]
 
-    backlog += last_cut_data
+
+    print(f"!Len backlog: {len(backlog)}")
+    print(f"Len encrypted image data: {len(encrypted_image_data)}")
+    if last_cut_len != 0:
+        backlog += encrypted_image_data[-last_cut_len: ]
+        encrypted_image_data = encrypted_image_data[: -last_cut_len]
+    print(f"!Len backlog: {len(backlog)}")
+    print(f"Len encrypted image data: {len(encrypted_image_data)}")
 
 
         
@@ -102,14 +115,20 @@ def png_raw_image():
         
     block_ctr = 0
     encrypted_data = b''
+    counter = 0
+    # encrypted_data += backlog[0:remove_per_block]
     for i in range(0, len(encrypted_image_data), key_size-remove_per_block):
         encrypted_data += backlog[block_ctr * remove_per_block : block_ctr * remove_per_block + remove_per_block]
+        counter += len(backlog[block_ctr * remove_per_block : block_ctr * remove_per_block + remove_per_block])
         encrypted_data += encrypted_image_data[i: i+key_size-remove_per_block]
         
         block_ctr = block_ctr + 1
     
-    encrypted_data += last_cut_data#backlog[block_ctr * remove_per_block:]
-    #encrypted_data = initial_vector + encrypted_data
+    print(f"Added from backlog: {counter} bytes")
+    print(f"Restored encrypted len WT backlog: {len(encrypted_data)}")
+    print(f"Len last backlog part: {len(backlog[(block_ctr) * remove_per_block:])}")
+    encrypted_data += backlog[(block_ctr) * remove_per_block:]
+    encrypted_data = initial_vector + encrypted_data
             
     
     print(f"Len restored encrypted data: {len(encrypted_data)}")
@@ -135,8 +154,8 @@ def main():
     png_rsa.generate_keypair(256)
     # png_rsa.set_public_key(public_key)
     # png_rsa.set_private_key(private_key)
-    encrypted_image = png_rsa.encrypt("ECB", make_showable=True)
-    # decrypted_image = png_rsa.decrypt("ECB", False)
+    encrypted_image = png_rsa.encrypt("CBC", make_showable=False)
+    decrypted_image = png_rsa.decrypt("CBC", is_raw=False)
     
 
 if __name__ == "__main__":
