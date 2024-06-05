@@ -8,15 +8,22 @@ from binascii import hexlify
 class BaseMode:
     """Interface class for block cipher modes of operation."""
 
-    def __init__(self, publick_key: PublicKey, private_key: PrivateKey, additional_pad: bool = True):
-        self.public_key = publick_key
+    def __init__(self, public_key: PublicKey, private_key: PrivateKey, additional_pad: bool = True, encrypt_func = encrypt, decrypt_func = decrypt):
+        self.public_key = public_key
         self.private_key = private_key
-        self.key_size = (publick_key.n.bit_length() + 7) // 8
+        self.key_size = (public_key.n.bit_length() + 7) // 8
         self.additional_pad = additional_pad
-        if additional_pad:
-            self.block_size = self.key_size - 11  # min 11 bytes for padding
+        self.encrypt_func = encrypt_func
+        self.decrypt_func = decrypt_func
+        if self.encrypt_func == encrypt:
+            if additional_pad:
+                self.block_size = self.key_size - 11  # min 11 bytes for padding
+            else:
+                self.block_size = self.key_size - 1
         else:
-            self.block_size = self.key_size - 1
+            self.block_size = self.key_size-2 - 2*20
+            if self.block_size <= 0:
+                raise ValueError("Key size is too small")
 
     def encrypt(self, data: bytes) -> bytes:
         """Encrypt the data."""
@@ -68,7 +75,10 @@ class BaseMode:
         """
         if self.additional_pad:
             data_block = self.add_padding(data_block)
-        return encrypt(self.public_key, int.from_bytes(data_block, byteorder="big"))
+        if self.encrypt_func == encrypt:
+            return self.encrypt_func(self.public_key, int.from_bytes(data_block, byteorder="big"))
+        else:
+            return self.encrypt_func(data_block)
 
     def remove_padding(self, data_block: bytes):
         """
@@ -97,9 +107,13 @@ class BaseMode:
         Returns:
             - `bytes`: The decrypted data block.
         """
-        decrypted_data = decrypt(
-            self.private_key, int.from_bytes(data_block, byteorder="big")
-        )
+        if self.decrypt_func == decrypt:
+            decrypted_data = self.decrypt_func(
+                self.private_key, int.from_bytes(data_block, byteorder="big")
+            )
+        else:
+            decrypted_data = self.decrypt_func(data_block)
+            
         if self.additional_pad:
             decrypted_data = self.remove_padding(decrypted_data)
         return decrypted_data
@@ -121,7 +135,7 @@ class ECB(BaseMode):
         encrypted_data = b""
         for i in range(0, len(data), self.block_size):
             data_block = data[i : i + self.block_size]
-            if not self.additional_pad:
+            if not self.additional_pad and self.encrypt_func == encrypt:
                 data_block = b"\x01" + data_block
                 
             encrypted_block = self.encrypt_block(data_block)
@@ -143,7 +157,7 @@ class ECB(BaseMode):
         for i in range(0, len(data), self.key_size):
             data_block = data[i : i + self.key_size]
             decrypted_block = self.decrypt_block(data_block)
-            if not self.additional_pad:
+            if not self.additional_pad and self.encrypt_func == encrypt:
                 if i + self.key_size >= len(data):
                     decrypted_block = decrypted_block.lstrip(b"\x00")
                 decrypted_block = decrypted_block[1:]
@@ -171,7 +185,7 @@ class CBC(BaseMode):
         encrypted_data = b"" + initial_vector
         for i in range(0, len(data), self.block_size):
             data_block = data[i : i + self.block_size]
-            if not self.additional_pad:
+            if not self.additional_pad and self.encrypt_func == encrypt:
                 data_block = b"\x01" + data_block
                 if i + self.block_size >= len(data):
                     data_block = b'\x00' * (self.key_size - len(data_block)) + data_block
@@ -203,7 +217,7 @@ class CBC(BaseMode):
             decrypted_block = bytes(
                 b1 ^ b2 for b1, b2 in zip(decrypted_block, initial_vector)
             )
-            if not self.additional_pad:
+            if not self.additional_pad and self.encrypt_func == encrypt:
                 if i + self.key_size >= len(data):
                     decrypted_block = decrypted_block.lstrip(b"\x00")
                 decrypted_block = decrypted_block[1:]
@@ -264,19 +278,44 @@ class CTR(BaseMode):
 
 
 def main():
-    # key 32 bit
-    public_key, private_key = generate_keypair(256)
-    # public_key.export("public_key.pem")
-    # private_key.export("private_key.pem")
-    """Test the modes of operation."""
-    message = b"\x00 Hello vizels.. \x00" * 200
-    # public_key = PublicKey.load("public_key.pem")
-    # private_key = PrivateKey.load("private_key.pem")
-    mode = CBC(public_key, private_key, False)
+    from Crypto.Cipher import PKCS1_OAEP
+    from Crypto.PublicKey import RSA
+    from rsa.keys import PublicKey, PrivateKey, generate_keypair
+
+    public_key1, private_key1 = generate_keypair(512)
+    public_key1.export("public_key.pem")
+    private_key1.export("private_key.pem")
+
+    public_key = RSA.import_key(open("public_key.pem").read())
+    cipher = PKCS1_OAEP.new(public_key)
+
+    private_key = RSA.import_key(open("private_key.pem").read())
+    decipher = PKCS1_OAEP.new(private_key)
+
+    mode = ECB(public_key1, private_key1, False, cipher.encrypt, decipher.decrypt)
+    # mode = ECB(public_key, private_key, False, encrypt, decrypt)
+    
+    message = b"Hello Vizels " * 20
     encrypted_message = mode.encrypt(message)
     print(f"Encrypted data: {encrypted_message}")
+    
     decrypted_message = mode.decrypt(encrypted_message)
     print(f"Decrypted data: {decrypted_message}")
+    
+    
+    # key 32 bit
+    # public_key, private_key = generate_keypair(256)
+    # # public_key.export("public_key.pem")
+    # # private_key.export("private_key.pem")
+    # """Test the modes of operation."""
+    # message = b"\x00 Hello vizels.. \x00" * 200
+    # # public_key = PublicKey.load("public_key.pem")
+    # # private_key = PrivateKey.load("private_key.pem")
+    # mode = CBC(public_key, private_key, False)
+    # encrypted_message = mode.encrypt(message)
+    # print(f"Encrypted data: {encrypted_message}")
+    # decrypted_message = mode.decrypt(encrypted_message)
+    # print(f"Decrypted data: {decrypted_message}")
 
 
 if __name__ == "__main__":

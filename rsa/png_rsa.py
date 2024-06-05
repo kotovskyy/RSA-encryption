@@ -5,6 +5,7 @@ from pngtools.png.chunks import Chunk
 from rsa.keys import PublicKey, PrivateKey, generate_keypair
 from rsa.cipher_mode import ECB, CBC, CTR, BaseMode
 from PIL import Image, PngImagePlugin
+from rsa.rsa_utils import encrypt, decrypt
 
 class PNG_RSA:
     """PNG_RSA interface for encrypting and decrypting PNG images using RSA."""
@@ -157,7 +158,7 @@ class PNG_RSA:
         self.private_key = key
         self.key_size = (key.n.bit_length() + 7) // 8
 
-    def _choose_mode(self, method: str):
+    def _choose_mode(self, method: str, encrypt_func = encrypt, decrypt_func = decrypt):
         """
         Choose the mode of operation for the RSA algorithm.
 
@@ -165,11 +166,11 @@ class PNG_RSA:
             - `ValueError`: If the mode is invalid.
         """
         if method == "ECB":
-            return ECB(self.public_key, self.private_key, self.additional_pad)
+            return ECB(self.public_key, self.private_key, self.additional_pad, encrypt_func, decrypt_func)
         if method == "CTR":
-            return CTR(self.public_key, self.private_key, self.additional_pad)
+            return CTR(self.public_key, self.private_key, self.additional_pad, encrypt_func, decrypt_func)
         if method == "CBC":
-            return CBC(self.public_key, self.private_key, self.additional_pad)
+            return CBC(self.public_key, self.private_key, self.additional_pad, encrypt_func, decrypt_func)
         raise ValueError("Invalid mode")
 
     def _get_IDAT(self) -> Chunk:
@@ -194,7 +195,7 @@ class PNG_RSA:
         self.image.chunks.remove(old_chunk)
         self.image.chunks.insert(index, new_chunk)
 
-    def encrypt(self, method: str = "ECB", make_showable: bool = True) -> bytes:
+    def encrypt(self, method: str = "ECB", make_showable: bool = True, encrypt_func = encrypt, decrypt_func = decrypt) -> bytes:
         """
         Encrypt the image using the RSA algorithm and given method.
         Methods correspond to the modes of operation in the RSA algorithm.
@@ -206,7 +207,7 @@ class PNG_RSA:
         Returns:
             - `bytes`: The encrypted data.
         """
-        mode = self._choose_mode(method)
+        mode = self._choose_mode(method, encrypt_func, decrypt_func)
         if make_showable:
             encrypted_data = self._encrypt_raw_image(mode)
         else:
@@ -214,7 +215,7 @@ class PNG_RSA:
             
         return encrypted_data
 
-    def decrypt(self, method: str = "ECB", is_raw: bool = True) -> bytes:
+    def decrypt(self, method: str = "ECB", is_raw: bool = True, encrypt_func = encrypt, decrypt_func = decrypt) -> bytes:
         """
         Decrypt the image using the RSA algorithm and given method.
         Methods correspond to the modes of operation in the RSA algorithm.
@@ -230,7 +231,7 @@ class PNG_RSA:
         Returns:
             - `bytes`: The decrypted data.
         """
-        mode = self._choose_mode(method)
+        mode = self._choose_mode(method, encrypt_func, decrypt_func)
         
         if is_raw:
             decrypted_data = self._decrypt_raw_image(mode)

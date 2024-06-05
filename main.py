@@ -149,13 +149,29 @@ def main():
 
     # public_key = PublicKey.load("public_key.pem")
     # private_key = PrivateKey.load("private_key.pem")
+    
+    from Crypto.Cipher import PKCS1_OAEP
+    from Crypto.PublicKey import RSA
+    from rsa.rsa_utils import encrypt, decrypt
 
-    png_rsa = PNG_RSA("pngtools/images/penguin.png", True)
-    png_rsa.generate_keypair(256)
-    # png_rsa.set_public_key(public_key)
-    # png_rsa.set_private_key(private_key)
-    encrypted_image = png_rsa.encrypt("ECB", make_showable=True)
-    decrypted_image = png_rsa.decrypt("ECB", is_raw=True)
+    public_key, private_key = generate_keypair(512)
+    public_key.export("public_key.pem")
+    private_key.export("private_key.pem")
+
+    public_key = RSA.import_key(open("public_key.pem").read())
+    cipher = PKCS1_OAEP.new(public_key)
+
+    private_key = RSA.import_key(open("private_key.pem").read())
+    decipher = PKCS1_OAEP.new(private_key)
+
+    png_rsa = PNG_RSA("pngtools/images/image3.png", False)
+    png_rsa.generate_keypair(512)
+
+    # encrypted_image = png_rsa.encrypt("CBC", True, cipher.encrypt, decipher.decrypt)
+    # decrypted_image = png_rsa.decrypt("CBC", True, cipher.encrypt, decipher.decrypt)
+    
+    encrypted_image = png_rsa.encrypt("ECB", True, encrypt, decrypt)
+    decrypted_image = png_rsa.decrypt("ECB", True, encrypt, decrypt)
     
 
 if __name__ == "__main__":
